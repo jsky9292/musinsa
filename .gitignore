@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test files
+*.html
+test_*.csv
+page_source.html
+product_page.html
+
+# Data files (too large for GitHub)
+*.csv
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets
+.env
+config.ini
+secrets.toml
+
+# Chrome driver
+chromedriver.exe
+chromedriver
