@@ -105,6 +105,129 @@ if products_df is not None:
     if '할인율' in products_df.columns:
         products_df['할인율'] = pd.to_numeric(products_df['할인율'], errors='coerce')
     
+    # 검색 기능 추가
+    st.markdown("### 🔍 상품 검색")
+    col1, col2, col3 = st.columns([3, 2, 2])
+    
+    with col1:
+        search_term = st.text_input(
+            "검색어 입력", 
+            placeholder="상품명, 브랜드명 검색...",
+            help="상품명이나 브랜드명으로 검색할 수 있습니다"
+        )
+    
+    with col2:
+        price_range = st.select_slider(
+            "가격대",
+            options=['전체', '~3만원', '3-5만원', '5-10만원', '10-20만원', '20만원~'],
+            value='전체'
+        )
+    
+    with col3:
+        if '브랜드' in products_df.columns:
+            brand_options = ['전체'] + sorted(products_df['브랜드'].unique().tolist())
+            selected_brand = st.selectbox("브랜드", brand_options)
+        else:
+            selected_brand = '전체'
+    
+    # 필터링 적용
+    filtered_df = products_df.copy()
+    
+    # 검색어 필터링
+    if search_term:
+        mask = False
+        if '상품명' in filtered_df.columns:
+            mask = mask | filtered_df['상품명'].str.contains(search_term, case=False, na=False)
+        if '브랜드' in filtered_df.columns:
+            mask = mask | filtered_df['브랜드'].str.contains(search_term, case=False, na=False)
+        filtered_df = filtered_df[mask]
+    
+    # 가격대 필터링
+    if price_range != '전체' and '가격' in filtered_df.columns:
+        if price_range == '~3만원':
+            filtered_df = filtered_df[filtered_df['가격'] <= 30000]
+        elif price_range == '3-5만원':
+            filtered_df = filtered_df[(filtered_df['가격'] > 30000) & (filtered_df['가격'] <= 50000)]
+        elif price_range == '5-10만원':
+            filtered_df = filtered_df[(filtered_df['가격'] > 50000) & (filtered_df['가격'] <= 100000)]
+        elif price_range == '10-20만원':
+            filtered_df = filtered_df[(filtered_df['가격'] > 100000) & (filtered_df['가격'] <= 200000)]
+        elif price_range == '20만원~':
+            filtered_df = filtered_df[filtered_df['가격'] > 200000]
+    
+    # 브랜드 필터링
+    if selected_brand != '전체' and '브랜드' in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df['브랜드'] == selected_brand]
+    
+    # 검색 결과 표시
+    st.info(f"🔍 검색 결과: {len(filtered_df)}개 상품")
+    
+    # 정렬 옵션
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        sort_by = st.selectbox(
+            "정렬",
+            options=['가격 낮은순', '가격 높은순', '할인율 높은순', '브랜드명순'],
+            label_visibility="collapsed"
+        )
+    
+    # 정렬 적용
+    if sort_by == '가격 낮은순' and '가격' in filtered_df.columns:
+        filtered_df = filtered_df.sort_values('가격')
+    elif sort_by == '가격 높은순' and '가격' in filtered_df.columns:
+        filtered_df = filtered_df.sort_values('가격', ascending=False)
+    elif sort_by == '할인율 높은순' and '할인율' in filtered_df.columns:
+        filtered_df = filtered_df.sort_values('할인율', ascending=False)
+    elif sort_by == '브랜드명순' and '브랜드' in filtered_df.columns:
+        filtered_df = filtered_df.sort_values('브랜드')
+    
+    # 검색 결과 테이블
+    if len(filtered_df) > 0:
+        # 상품 카드 형식으로 표시
+        st.markdown("### 📦 검색된 상품")
+        
+        # 페이지네이션
+        items_per_page = 20
+        total_pages = (len(filtered_df) - 1) // items_per_page + 1
+        page = st.number_input('페이지', min_value=1, max_value=total_pages, value=1)
+        
+        start_idx = (page - 1) * items_per_page
+        end_idx = min(start_idx + items_per_page, len(filtered_df))
+        
+        page_df = filtered_df.iloc[start_idx:end_idx]
+        
+        # 상품 표시
+        for _, row in page_df.iterrows():
+            with st.container():
+                col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
+                
+                with col1:
+                    if '상품명' in row:
+                        st.markdown(f"**{row['상품명']}**")
+                    if '브랜드' in row:
+                        st.caption(f"🏷️ {row['브랜드']}")
+                
+                with col2:
+                    if '가격' in row:
+                        st.metric("가격", f"₩{row['가격']:,.0f}")
+                
+                with col3:
+                    if '할인율' in row and pd.notna(row['할인율']) and row['할인율'] > 0:
+                        st.metric("할인", f"{row['할인율']:.0f}%")
+                
+                with col4:
+                    if '상품링크' in row and pd.notna(row['상품링크']):
+                        st.markdown(f"[🔗 상품보기]({row['상품링크']})")
+                
+                st.markdown("---")
+    else:
+        st.warning("검색 결과가 없습니다. 다른 검색어를 입력해주세요.")
+    
+    st.markdown("---")
+    
+    # 필터링된 데이터로 분석 진행
+    products_df = filtered_df
+    
     # 탭 구성
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 개요",
